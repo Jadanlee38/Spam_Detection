@@ -1,28 +1,32 @@
+import requests
 import streamlit as st
 import torch
 from transformers import BertTokenizer, BertForSequenceClassification
 import os
 import gdown
 
-# Download the fine-tuned model from Google Drive using gdown
+# Download and cache the model from Google Drive
 MODEL_URL = "https://drive.google.com/uc?id=1PajLfeMd3_vhjEBxShA0CMj2oTez6wnS"
 MODEL_PATH = "fine_tuned_model.pt"
 
 @st.cache_resource
-def download_model():
+def download_and_load_model():
+    # Check if the model is already downloaded
     if not os.path.exists(MODEL_PATH):
         with st.spinner("Downloading model..."):
             gdown.download(MODEL_URL, MODEL_PATH, quiet=False)
-    return MODEL_PATH
 
-# Load the fine-tuned model
-download_model()
-tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-model = BertForSequenceClassification.from_pretrained("bert-base-uncased", num_labels=2)
-model.load_state_dict(torch.load(MODEL_PATH, map_location=torch.device("cpu")))
-model.eval()
+    # Load the tokenizer and model
+    tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+    model = BertForSequenceClassification.from_pretrained("bert-base-uncased", num_labels=2)
+    model.load_state_dict(torch.load(MODEL_PATH, map_location=torch.device("cpu")))
+    model.eval()
+    return tokenizer, model
 
-# Define a prediction function
+# Load the model once and cache it
+tokenizer, model = download_and_load_model()
+
+# Define the prediction function
 def predict(subject, body):
     text = subject + " " + body
     encodings = tokenizer(text, padding=True, truncation=True, max_length=512, return_tensors="pt")
